@@ -24,12 +24,16 @@
  * SOFTWARE.
 */
 
-#ifdef HAS_ALSA_ASOUND_H
+#include "alsa-switch-config.h"
+
+#ifdef HAVE_ALSA_ASOUNDLIB_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "util.h"
+#include "alsa_util.h"
+#include "system_util.h"
+
 
 #define BUFSIZE (1024 * 4)
 #define	DEFAULT_FORMAT	SND_PCM_FORMAT_S16_LE
@@ -89,7 +93,7 @@ int main(int argc, const char *argv[])
 
 	while (1)
 	{
-		int avail;
+		snd_pcm_sframes_t avail;
 		err = snd_pcm_wait(playback_handle, 1000);
 		if(err < 0)
 		{
@@ -97,6 +101,12 @@ int main(int argc, const char *argv[])
 			break;
 		}
 
+		int cmd = getc(stdin);
+		if(cmd != EOF)
+		{
+			printf("got command '%c'\n",cmd);
+			fflush(stdout);
+		}
 		avail = snd_pcm_avail_update(capture_handle);
 		if (avail > 0)
 		{

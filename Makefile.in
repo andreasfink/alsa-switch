@@ -5,15 +5,15 @@
 CC=@CC@
 CFLAGS=@CFLAGS@
 LDFLAGS=@LDFLAGS@
-
+LIBS=@LIBS@
 
 all: alsa-stream alsa-switch
 
 alsa-switch:	alsa-switch.o system_util.o
-	${CC} ${LDFLAGS} -o alsa-switch alsa-switch.o system_util.o
+	${CC} ${LDFLAGS} -o alsa-switch alsa-switch.o alsa_util.o system_util.o ${LIBS}
 
 alsa-stream:	alsa-stream.o system_util.o alsa_util.o
-	${CC} ${LDFLAGS} -o alsa-stream alsa-stream.o alsa_util.o system_util.o -lasound
+	${CC} ${LDFLAGS} -o alsa-stream alsa-stream.o alsa_util.o system_util.o ${LIBS}
 
 install: alsa-stream alsa-switch
 	install -o root -g root -m 755 alsa-stream $(DESTDIR)/usr/local/bin/alsa-stream

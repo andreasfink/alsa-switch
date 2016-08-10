@@ -13,5 +13,8 @@
 
 
 /* Define if you have the <alsa/asound.h> header file.  */
-#undef HAVE_ALSA_ASOUND_H
+#undef HAVE_ALSA_ASOUNDLIB_H
+
+#endif
+
 

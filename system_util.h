@@ -17,5 +17,7 @@
  *
  */
 
-#include <unistd.h>
-int start_child_process(const char *cmd[], int *toChildFdr, int *fromChildFd, pid_t *childPid);
+#include <unistd.h> /* For pid_t */
+#include <stdlib.h>
+
+int start_child_process(char *const *cmd, int *toChildFdr, int *fromChildFd, pid_t *childPid);

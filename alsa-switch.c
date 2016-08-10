@@ -33,12 +33,12 @@
 #include <errno.h>
 #include <string.h>
 #include <poll.h>
-#include "util.h"
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "alsa-switch-config.h"
 #include "system_util.h"
-#ifdef	HAS_ALSA_ASOUND_H
+#ifdef	HAVE_ALSA_ASOUNDLIB_H
 #include "alsa_util.h"
 #endif
 
@@ -48,11 +48,10 @@ typedef struct sound_pipe
 	const char *input_device_name;
 	const char *output_device_name;
 	const char *control_pipe_name;
-#ifdef	CHECK_SOUND_DRIVERS
-
+#ifdef	HAVE_ALSA_ASOUNDLIB_H
 	snd_pcm_t *input_handle;
 	snd_pcm_t *output_handle;
-    uint8_t *buf;
+   	unsigned char *buf;
     ssize_t  bufsize;
 
 #endif
@@ -80,7 +79,7 @@ int main(int argc, const char *argv[])
 
 	const char *format_string = argv[1];
 	const char *rate_string = argv[2];
-#ifdef	HAS_ALSA_ASOUND_H
+#ifdef	HAVE_ALSA_ASOUNDLIB_H
     int rate = atoi(rate_string);
 	int format = format_string_to_value(format_string);
 #endif
@@ -107,7 +106,7 @@ int main(int argc, const char *argv[])
 		pipe->output_device_name = argv[3+(i*3)+1];
 		pipe->control_pipe_name = argv[3+(i*3)+2];
 
-#ifdef	HAS_ALSA_ASOUND_H
+#ifdef	HAVE_ALSA_ASOUNDLIB_H
 
 #define BUFSIZE (1024 * 4)
 
@@ -115,7 +114,6 @@ int main(int argc, const char *argv[])
         pipe->buf       = malloc(BUFSIZE * 2);
         memset(pipe->buf, 0, BUFSIZE * 2);
 
-)
         err = open_sound_device(&pipe->input_handle, pipe->input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,BUFSIZE);
 		if(err < 0)
 		{
@@ -152,7 +150,10 @@ int main(int argc, const char *argv[])
 			return err;
 		}
 #endif
-        pipe->controlStream = open(pipe->control_pipe_name,O_RDONLY);
+		printf("opening control channel %s",pipe->control_pipe_name);
+        pipe->controlStream = open(pipe->control_pipe_name,O_RDONLY | O_NONBLOCK);
+		printf(".\n");
+		fflush(stdout);
         if(pipe->controlStream < 0)
         {
             /* lets try to create it */
@@ -171,7 +172,7 @@ int main(int argc, const char *argv[])
             }
         }
 	}
-#ifdef	ALSA_SOUND
+#ifdef	HAVE_ALSA_ASOUNDLIB_H
 	/* we close the sound drivers so the child process can take over */
 	for(i=0;i<pipecount;i++)
 	{
@@ -192,7 +193,7 @@ int main(int argc, const char *argv[])
 		cmd[3] = pipe->input_device_name;
 		cmd[4] = pipe->output_device_name;
 		cmd[5] = NULL;
-		err = start_child_process(cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
+		err = start_child_process((char *const *)cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
 		if(err)
 		{
 			fprintf(stderr,"Can not fork subprocesses");
@@ -206,6 +207,8 @@ int main(int argc, const char *argv[])
     int doQuit=0;
 	while(doQuit==0)
 	{
+		fprintf(stderr,".");
+		fflush(stderr);
 		memset(fds,0x00,pSize);
 		for(i=0;i<pipecount;i++)
 		{
@@ -215,7 +218,7 @@ int main(int argc, const char *argv[])
 			fds[i*2+1].fd = pipe->inStream;
 			fds[i*2+1].events = POLLIN;
 		}
-		int ret = poll(fds, pollStructCount, 100); /* timeout of 100ms */
+		int ret = poll(fds, pollStructCount, 10000); /* timeout of 100ms */
 		if (ret < 0)
     	{
         	if (errno != EINTR)
@@ -233,31 +236,41 @@ int main(int argc, const char *argv[])
             if(control_events & POLLIN)
             {
                 char in;
-                ssize_t n = read(pipe->inStream,&in,1);
+
+                ssize_t n = read(pipe->controlStream,&in,1);
                 if(n==1)
                 {
                     if (in=='q')
                     {
                         doQuit=1;
                     }
-                    process_command(pipes,pipecount,i, in);
+					else if(in < 32)
+					{
+						/* unprintable controls like \n \r. we skip it */
+					}
+					else
+					{
+						fprintf(stderr,"%d:%s:%c\n",i,pipe->control_pipe_name,in);
+						fflush(stderr);
+                    	//process_command(pipes,pipecount,i, in);
+					}
                 }
             }
             if(feedback_events & POLLHUP)
             {
                 fprintf(stderr,"Subprocess got killed\n");
+				fflush(stdout);
             }
-            else if(feedback_events & POLLIN)
+            if(feedback_events & POLLIN)
             {
                 char buf[256];
-                ssize_t n = 1;
+                ssize_t n = read(pipe->inStream,buf,sizeof(buf));
                 while(n>0)
                 {
-                    n = read(pipe->inStream,buf,sizeof(buf));
-                    if(n>0)
-                    {
-                        write(STDOUT_FILENO,buf,n);
-                    }
+                    write(STDOUT_FILENO,buf,n);
+					n = read(pipe->inStream,buf,sizeof(buf));
+					fprintf(stdout,"+");
+					fflush(stdout);
                 }
             }
         }
@@ -279,7 +292,7 @@ void process_command(sound_pipe *pipes,int pipecount,int index, char in)
 {
     int i;
     int max_priority = 0;
-
+	
     if((in >='0') && (in <= '9'))
     {
         pipes[index].currentPriorityLevel = in - '0';

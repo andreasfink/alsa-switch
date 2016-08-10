@@ -24,7 +24,9 @@
  * SOFTWARE.
  */
 
-#ifdef	HAS_ALSA_ASOUND_H
+#include "alsa-switch-config.h"
+
+#ifdef	HAVE_ALSA_ASOUNDLIB_H
 
 #include "alsa_util.h"
 #include <string.h>
@@ -233,7 +235,7 @@
 	return SND_PCM_FORMAT_FLOAT;
 } 
 
-int open_sound_device(snd_pcm_t **handle, const char *name, int dir, int rate, int format, size_t bufsize)
+int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned int rate, int format, size_t bufsize)
 {
 	snd_pcm_hw_params_t *hw_params;
 	snd_pcm_sw_params_t *sw_params;
@@ -340,43 +342,6 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, int rate, i
 		fprintf(stderr, "%s (%s): cannot set software parameters(%s)\n",
 			name, dirname, snd_strerror(err));
 		return err;
-	}
-	return 0;
-}
-
-int start_child_process(char *cmd[], int *toChildFdr, int *fromChildFd, pid_t *childPid)
-{
-	int pipefds[2];
-	pid_t pid;
-	if(pipe(pipefds)< 0)
-	{
-		return -1;
-	}
-	pid = fork();
-	if(pid==-1)
-	{
-		return NULL;
-	}
-	if(pid==0)
-	{
-		/* child process */
-		dup2(pipefds[TXPIPE], STDOUT_FILENO);
-		dup2(pipefds[RXPIPE], STDIN_FILENO);
-		char  **cmd;
-		int n = (int)[args count];
-		int i;
-		if (execvp(cmd[0], cmd) == -1)
-		{
-			exit(-1);
-		}
-		exit(0);
-	}
-	else
-	{
-		*fromChildFd = pipefds[RXPIPE];
-		*toChildFd = pipefds[TXPIPE];
-		*childPid = pid;
-		
 	}
 	return 0;
 }

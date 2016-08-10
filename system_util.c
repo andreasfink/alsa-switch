@@ -39,7 +39,7 @@
 ** standard input and output of the child process
 */
 
-int start_child_process(const char *cmd[], int *toChildFd, int *fromChildFd, pid_t *childPid)
+int start_child_process(char *const *cmd, int *toChildFd, int *fromChildFd, pid_t *childPid)
 {
     int pipe_down[2];
     int pipe_up[2];
@@ -67,7 +67,6 @@ int start_child_process(const char *cmd[], int *toChildFd, int *fromChildFd, pid
 		dup2(pipe_up[TXPIPE], STDOUT_FILENO);
         close(pipe_up[RXPIPE]);
 
-		char  **cmd;
 		if (execvp(cmd[0], cmd) == -1)
 		{
 			exit(-1);

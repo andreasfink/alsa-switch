@@ -2230,7 +2230,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-ac_config_headers="$ac_config_headers config.h"
+ac_config_headers="$ac_config_headers alsa-switch-config.h"
 
 
 ac_aux_dir=
@@ -2383,6 +2383,7 @@ BUILD_DIR=.
 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 export PKG_CONFIG_PATH
 
+
 case "$host" in
   *apple-darwin*)
     #
@@ -2397,7 +2398,7 @@ case "$host" in
 
     ARCH="-arch x86_64"
     CC=clang
-    CFLAGS="$CFLAGS -std=c99 ${ARCH}"
+    CFLAGS="$CFLAGS -D__USE_XOPEN2K8 -D_BSD_SOURCE -D_POSIX_SOURCE ${ARCH}"
     LDFLAGS="$LDFLAGS ${ARCH}"
     BUILD_DIR="build/osx"
     SHARED_LIBRARY_EXTENSION="dylib"
@@ -2413,7 +2414,7 @@ case "$host" in
   *-linux-*)
 	CC=clang
 	CXX=clang++
-	CFLAGS="$CFLAGS -std=c99 -fPIC -DLINUX -D_BSD_SOURCE -D_POSIX_SOURCE"
+	CFLAGS="$CFLAGS -fPIC -D__USE_XOPEN2K8 -D_BSD_SOURCE -D_POSIX_SOURCE"
 	CFLAGS="$CFLAGS  -Wno-trigraphs  -Wno-missing-field-initializers -Wmissing-prototypes -Wno-implicit-atomic-properties"
 	CFLAGS="$CFLAGS -Wno-arc-repeated-use-of-weak -Wduplicate-method-match -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label"
 	CFLAGS="$CFLAGS -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wno-unknown-pragmas -Wno-shadow"
@@ -4095,6 +4096,7 @@ _ACEOF
 
 fi
 
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for snd_pcm_hw_params_set_format in -lasound" >&5
 $as_echo_n "checking for snd_pcm_hw_params_set_format in -lasound... " >&6; }
 if ${ac_cv_lib_asound_snd_pcm_hw_params_set_format+:} false; then :
@@ -4132,57 +4134,9 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_asound_snd_pcm_hw_params_set_format" >&5
 $as_echo "$ac_cv_lib_asound_snd_pcm_hw_params_set_format" >&6; }
 if test "x$ac_cv_lib_asound_snd_pcm_hw_params_set_format" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBASOUND 1
-_ACEOF
-
-  LIBS="-lasound $LIBS"
-
+  LIBS="$LIBS -lasound"
 fi
 
-
-if test -z "$pthread"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_exit in -lpthread" >&5
-$as_echo_n "checking for pthread_exit in -lpthread... " >&6; }
-if ${ac_cv_lib_pthread_pthread_exit+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lpthread  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char pthread_exit ();
-int
-main ()
-{
-return pthread_exit ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_pthread_pthread_exit=yes
-else
-  ac_cv_lib_pthread_pthread_exit=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pthread_pthread_exit" >&5
-$as_echo "$ac_cv_lib_pthread_pthread_exit" >&6; }
-if test "x$ac_cv_lib_pthread_pthread_exit" = xyes; then :
-  LIBS="$LIBS -lpthread"
-fi
-
-fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ANSI C header files" >&5
@@ -5064,7 +5018,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
+    "alsa-switch-config.h") CONFIG_HEADERS="$CONFIG_HEADERS alsa-switch-config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

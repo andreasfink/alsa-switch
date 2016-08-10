@@ -1,5 +1,5 @@
 dnl /* ==================================================================== 
-dnl  * Project "ulib"
+dnl  * Project "alsa-switch"
 dnl  * (c) 2016 Andreas Fink
 dnl  * ==================================================================== 
 dnl  */ 
@@ -14,7 +14,7 @@ dnl initialization
 
 AC_PREREQ(2.13)
 AC_INIT([alsa-switch],[1.0],[afink])
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADER(alsa-switch-config.h)
 AC_SUBST(SHELL)
 AC_CONFIG_AUX_DIR(.)
 AC_SET_TERMINAL_SEQUENCES()
@@ -66,7 +66,7 @@ case "$host" in
 
     ARCH="-arch x86_64"
     CC=clang
-    CFLAGS="$CFLAGS -std=c99 -D_BSD_SOURCE -D_POSIX_SOURCE ${ARCH}"
+    CFLAGS="$CFLAGS -D__USE_XOPEN2K8 -D_BSD_SOURCE -D_POSIX_SOURCE ${ARCH}"
     LDFLAGS="$LDFLAGS ${ARCH}"
     BUILD_DIR="build/osx"
     SHARED_LIBRARY_EXTENSION="dylib"
@@ -80,7 +80,7 @@ case "$host" in
   *-linux-*)
 	CC=clang
 	CXX=clang++
-	CFLAGS="$CFLAGS -std=c99 -fPIC -DLINUX -D_BSD_SOURCE -D_POSIX_SOURCE"
+	CFLAGS="$CFLAGS -fPIC -D__USE_XOPEN2K8 -D_BSD_SOURCE -D_POSIX_SOURCE"
 	CFLAGS="$CFLAGS  -Wno-trigraphs  -Wno-missing-field-initializers -Wmissing-prototypes -Wno-implicit-atomic-properties"
 	CFLAGS="$CFLAGS -Wno-arc-repeated-use-of-weak -Wduplicate-method-match -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label"
 	CFLAGS="$CFLAGS -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wno-unknown-pragmas -Wno-shadow"
@@ -134,11 +134,8 @@ dnl Checks for libraries.
 
 AC_CHECK_LIB(m, log)
 AC_CHECK_LIB(socket, accept)
-AC_CHECK_LIB(asound,snd_pcm_hw_params_set_format)
 
-if test -z "$pthread"; then
-    AC_CHECK_LIB(pthread, pthread_exit, [LIBS="$LIBS -lpthread"])
-fi
+AC_CHECK_LIB(asound,snd_pcm_hw_params_set_format,[LIBS="$LIBS -lasound"])
 
 dnl Checks for header files.
 
