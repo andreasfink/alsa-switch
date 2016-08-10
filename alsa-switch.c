@@ -81,7 +81,8 @@ int main(int argc, const char *argv[])
 		pipe->input_device_name = argv[3+(i*3)+0];
 		pipe->output_device_name = argv[3+(i*3)+1];
 		pipe->control_pipe_name = argv[3+(i*3)+2];
-		
+		memset(pipe->buf, 0, sizeof(pipe->buf));
+	
 		err = open_sound_device(&pipe->input_handle, pipe->input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,BUFSIZE);
 		if(err < 0)
 		{
@@ -106,16 +107,7 @@ int main(int argc, const char *argv[])
 			 pipe->input_device_name,snd_strerror(err));
 			return err;
 		}
-	
-		err = snd_pcm_start(pipe->input_handle);
-		if(err < 0)
-		{
-			fprintf(stderr, "cannot prepare audio interface '%s' for use(%s)\n",
-			 pipe->input_device_name,snd_strerror(err));
-			return err;
-		}
-		memset(pipe->buf, 0, sizeof(pipe->buf));
-		
+/*	
 		err = snd_pcm_link(pipe->input_handle,pipe->output_handle);
 		if(err < 0)
 		{
@@ -125,38 +117,50 @@ int main(int argc, const char *argv[])
 			 snd_strerror(err));
 			return err;
 		}
+*/
+		err = snd_pcm_start(pipe->input_handle);
+		if(err < 0)
+		{
+			fprintf(stderr, "cannot prepare audio interface '%s' for use(%s)\n",
+			 pipe->input_device_name,snd_strerror(err));
+			return err;
+		}
 	}
 	while (1)
 	{
-		usleep(10000);
-		/*
-		int avail;
-		err = snd_pcm_wait(playback_handle, 1000);
-		if(err < 0)
+		for(i=0;i<pipecount;i++)
 		{
-			fprintf(stderr, "poll failed(%s)\n", strerror(errno));
-			break;
-		}
+			int avail;
 
-		avail = snd_pcm_avail_update(capture_handle);
-		if (avail > 0)
-		{
-			if (avail > BUFSIZE)
-			{
-				avail = BUFSIZE;
-			}
-			snd_pcm_readi(capture_handle, buf, avail);
-		}
+			sound_pipe *pipe = &pipes[i];
 
-		avail = snd_pcm_avail_update(playback_handle);
-		if (avail > 0)
-		{
-			if (avail > BUFSIZE)
+			err = snd_pcm_wait(pipe->output_handle, 1000);
+			if(err < 0)
 			{
-				avail = BUFSIZE;
+				fprintf(stderr, "poll failed(%s)\n", strerror(errno));
+				break;
 			}
-			snd_pcm_writei(playback_handle, buf, avail);
-		}*/
+		
+			avail = snd_pcm_avail_update(pipe->input_handle);
+			if (avail > 0)
+			{
+				if (avail > BUFSIZE)
+				{
+					avail = BUFSIZE;
+				}
+				snd_pcm_readi(pipe->input_handle, pipe->buf, avail);
+			}
+
+			avail = snd_pcm_avail_update(pipe->output_handle);
+			if (avail > 0)
+			{
+				if (avail > BUFSIZE)
+				{
+					avail = BUFSIZE;
+				}
+				snd_pcm_writei(pipe->output_handle, pipe->buf, avail);
+			}
+		}
 		
 	}
 	

@@ -44,30 +44,25 @@ int main(int argc, const char *argv[])
 	unsigned int rate 	= DEFAULT_RATE;
 	unsigned int format	= DEFAULT_FORMAT;
 
-	if(argc < 3)
+	if(argc < 5)
 	{
-		fprintf(stderr,"Usage:\n\t%s input-device output-device {sample-rate (default 8000)} {format ( defaults to S16_LE)}\n",argv[0]);
+		fprintf(stderr,"Usage:\n\t%s audio-format sample-rate input-device output-device\n",argv[0]);
 		return -1;
 	}
 
-	const char *input_device_name  = argv[1];
-	const char *output_device_name = argv[2];
+	const char *input_device_name  = argv[3];
+	const char *output_device_name = argv[4];
 	const char *format_string = NULL;
-	if(argc > 3)
-	{
-		rate = atoi(argv[3]);
-	}
-	if(argc > 4)
-	{
-		format_string = argv[4];
-		format = format_string_to_value(format_string);
-	}
-	err = open_sound_device(&capture_handle, input_device_name, SND_PCM_STREAM_CAPTURE,rate,format);
+	rate = atoi(argv[2]);
+	format_string = argv[1];
+	format = format_string_to_value(format_string);
+	
+	err = open_sound_device(&capture_handle, input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,BUFSIZE);
 	if(err < 0)
 	{
 		return err;
 	}
-	err = open_sound_device(&playback_handle, "default", SND_PCM_STREAM_PLAYBACK,rate,format);
+	err = open_sound_device(&playback_handle, output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,BUFSIZE);
 	if(err < 0)
 	{
 		return err;

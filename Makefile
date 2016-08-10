@@ -19,6 +19,7 @@ alsa-switch.o:	alsa-switch.c
 util.o:	util.c
 	$(CC) $(CFLAGS) -c util.c -o util.o
 
-install: alsa-stream
-	install -o root -g root -m 755 alsa-stream  $(DESTDIR)/usr/local/bin/alsa-stream
+install: alsa-stream alsa-switch
+	install -o root -g root -m 755 alsa-stream $(DESTDIR)/usr/local/bin/alsa-stream
+	install -o root -g root -m 755 alsa-switch ${DESTDIR}/usr/local/bin/alsa-switch
 
