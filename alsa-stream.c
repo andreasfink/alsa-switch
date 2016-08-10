@@ -46,7 +46,7 @@ int main(int argc, const char *argv[])
 
 	if(argc < 5)
 	{
-		fprintf(stderr,"Usage:\n\t%s audio-format sample-rate input-device output-device\n",argv[0]);
+		fprintf(stderr,"\nUsage:\t%s audio-format sample-rate input-device output-device\n",argv[0]);
 		return -1;
 	}
 
