@@ -1,0 +1,17 @@
+/* ==================================================================== 
+ * alsa-switch-config.h
+ * Project "alsa-switch"
+ * (c) 2016, Andreas Fink
+ */ 
+
+#ifndef ALSA_SWITCH_CONFIG_H
+#define ALSA_SWITCH_CONFIG_H
+
+
+/* Define if you have the <sys/poll.h> header file.  */
+#undef HAVE_SYS_POLL_H
+
+
+/* Define if you have the <alsa/asound.h> header file.  */
+#undef HAVE_ALSA_ASOUND_H
+
