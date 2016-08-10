@@ -24,6 +24,8 @@
  * SOFTWARE.
 */
 
+#ifdef HAS_ALSA_ASOUND_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -119,4 +121,6 @@ int main(int argc, const char *argv[])
 	snd_pcm_close(capture_handle);
 	return 0;
 }
+
+#endif
 

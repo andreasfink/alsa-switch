@@ -1,0 +1,179 @@
+dnl /* ==================================================================== 
+dnl  * Project "ulib"
+dnl  * (c) 2016 Andreas Fink
+dnl  * ==================================================================== 
+dnl  */ 
+
+dnl
+dnl configure.in -- main autoconf macro definition file
+dnl
+dnl Process this file with autoconf to produce a configure script.
+dnl
+
+dnl initialization
+
+AC_PREREQ(2.13)
+AC_INIT([alsa-switch],[1.0],[afink])
+AC_CONFIG_HEADER(config.h)
+AC_SUBST(SHELL)
+AC_CONFIG_AUX_DIR(.)
+AC_SET_TERMINAL_SEQUENCES()
+
+COPYRIGHT="Copyright 2016 Andreas Fink"
+LICENSE="Freeware"
+PROJECT_NAME="alsa-switch"
+CONFIG_DEFINE="ALSA_SWITCH_CONFIG"
+
+dnl Check version number.
+VERSION=`head -n 1 VERSION`
+
+dnl Set user who runs ./configure
+CUSER=`id -un`
+AC_SUBST(VERSION)
+AC_SUBST(CUSER)
+
+AC_CONFIG_SECTION([Configuring for $PROJECT_NAME version $VERSION])
+
+dnl Checks system type.
+AC_CONFIG_SECTION([Running system checks])
+AC_CANONICAL_HOST
+
+dnl Apply system specific rules.
+dnl Executable extension for systems that need one, i.e. Cygwin
+dnl Set the LIBTOOL to be used to create libs
+EXE_EXT=""
+LIBTOOL="ar rc"
+RANLIB="ranlib"
+LIBS=""
+LIBRARY_NAME=$PROJECT_NAME
+BUILD_DIR=.
+
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+export PKG_CONFIG_PATH
+
+
+case "$host" in
+  *apple-darwin*) 
+    #
+    # MacOS X
+    # lets try to find the newest installed SDK for compilation
+    # so we know how to link against it
+    # the standard location /usr/include and /usr/lib are not good enough
+    # it wouldnt build i386 architecture on a ppc system
+    #
+    UR="`uname -r | cut -f1 -d.`"
+    DONE=0
+
+    ARCH="-arch x86_64"
+    CC=clang
+    CFLAGS="$CFLAGS -std=c99 -D_BSD_SOURCE -D_POSIX_SOURCE ${ARCH}"
+    LDFLAGS="$LDFLAGS ${ARCH}"
+    BUILD_DIR="build/osx"
+    SHARED_LIBRARY_EXTENSION="dylib"
+    LIBTOOL="libtool -static -o"
+    INSTALL_NAME_TOOL="install_name_tool"
+    SHARED_FLAGS="-dynamiclib -Wl,-dylib"
+    AC_DEFINE(HAVE_COMMONCRYPTO)
+    AC_DEFINE(HAVE_OPENSSL)
+    ;;
+
+  *-linux-*)
+	CC=clang
+	CXX=clang++
+	CFLAGS="$CFLAGS -std=c99 -fPIC -DLINUX -D_BSD_SOURCE -D_POSIX_SOURCE"
+	CFLAGS="$CFLAGS  -Wno-trigraphs  -Wno-missing-field-initializers -Wmissing-prototypes -Wno-implicit-atomic-properties"
+	CFLAGS="$CFLAGS -Wno-arc-repeated-use-of-weak -Wduplicate-method-match -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label"
+	CFLAGS="$CFLAGS -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wno-unknown-pragmas -Wno-shadow"
+	CFLAGS="$CFLAGS -Wno-four-char-constants -Wno-conversion -Wconstant-conversion -Wint-conversion -Wbool-conversion -Wenum-conversion"
+	CFLAGS="$CFLAGS -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wundeclared-selector"
+	CFLAGS="$CFLAGS -Wno-deprecated-implementations -Wprotocol -Wdeprecated-declarations -Wno-sign-conversion "
+	
+	CFLAGS="$CFLAGS -fasm-blocks -fblocks -fstrict-aliasing -fobjc-arc -fobjc-runtime=gnustep"
+	CFLAGS="$CFLAGS -fmessage-length=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit=0"
+	CFLAGS="$CFLAGS -fpascal-strings"
+	;;
+esac
+
+AC_SUBST(EXE_EXT)
+AC_SUBST(LIBTOOL)
+AC_SUBST(RANLIB)
+AC_ARG_WITH(cflags,
+[  --with-cflags=FLAGS     use FLAGS for CFLAGS],
+CFLAGS="$CFLAGS $withval")
+
+AC_ARG_WITH(libs,
+[  --with-libs=FLAGS       use FLAGS for extra libraries],
+LIBS="$LIBS $withval")
+
+
+dnl Checks for programs.
+
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+
+dnl Check whether compiler supports inline
+AC_C_INLINE
+
+dnl Check for word sizes.
+
+AC_CHECK_SIZEOF(short, 2)
+AC_CHECK_SIZEOF(int, 4)
+AC_CHECK_SIZEOF(long, 4)
+AC_CHECK_SIZEOF(long long, 8)
+SIZEOF_SHORT=$ac_cv_sizeof_short
+SIZEOF_INT=$ac_cv_sizeof_int
+SIZEOF_LONG=$ac_cv_sizeof_long
+SIZEOF_LONG_LONG=$ac_cv_sizeof_long_long
+AC_SUBST(SIZEOF_SHORT)
+AC_SUBST(SIZEOF_INT)
+AC_SUBST(SIZEOF_LONG)
+AC_SUBST(SIZEOF_LONG_LONG)
+
+dnl Checks for libraries.
+
+AC_CHECK_LIB(m, log)
+AC_CHECK_LIB(socket, accept)
+AC_CHECK_LIB(asound,snd_pcm_hw_params_set_format)
+
+if test -z "$pthread"; then
+    AC_CHECK_LIB(pthread, pthread_exit, [LIBS="$LIBS -lpthread"])
+fi
+
+dnl Checks for header files.
+
+AC_HEADER_STDC
+
+dnl check for headers
+AC_CONFIG_SECTION([Configuring HEADERS])
+
+AC_CHECK_HEADERS(alsa/asoundlib.h)
+AC_CHECK_HEADERS(sys/socket.h)
+AC_CHECK_HEADERS(sys/sockio.h)
+
+AC_CHECK_HEADERS(sys/poll.h,,,
+[[#if HAVE_SYS_POLL_H
+# include <sys/poll.h> 
+#endif 
+]]) 
+
+
+AC_CONFIG_SECTION([Configuring parameters])
+
+dnl Final Output
+AC_SUBST(PROJECT_NAME)
+
+AC_CONFIG_SECTION([Generating output files]) 
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
+
+dnl LICENSE notice
+
+AC_CONFIG_SECTION([License information])
+cat <<X
++--------------------------------------------------------------------
+| Project: ${PROJECT_NAME} ${VERSION}
+| ${COPYRIGHT}
+| ${LICENSE}
++--------------------------------------------------------------------
+X

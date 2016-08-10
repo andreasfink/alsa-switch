@@ -1,5 +1,5 @@
 /*
- * util.c
+ * alsa_util.c
  *
  * generic utility functions
   *
@@ -16,8 +16,11 @@
  * General Public License for more details.
  *
  */
- 
+
+#ifdef	HAS_ALSA_ASOUND_H
+
 #include <alsa/asoundlib.h>
  
 int format_string_to_value(const char *s);
 int open_sound_device(snd_pcm_t **handle, const char *name, int dir, int rate, int format, size_t bufsize);
+#endif

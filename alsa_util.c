@@ -23,8 +23,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
- 
-#include "util.h"
+
+#ifdef	HAS_ALSA_ASOUND_H
+
+#include "alsa_util.h"
+#include <string.h>
+
+#define RXPIPE 0
+#define TXPIPE 1
 
  int format_string_to_value(const char *s)
 {
@@ -337,3 +343,42 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, int rate, i
 	}
 	return 0;
 }
+
+int start_child_process(char *cmd[], int *toChildFdr, int *fromChildFd, pid_t *childPid)
+{
+	int pipefds[2];
+	pid_t pid;
+	if(pipe(pipefds)< 0)
+	{
+		return -1;
+	}
+	pid = fork();
+	if(pid==-1)
+	{
+		return NULL;
+	}
+	if(pid==0)
+	{
+		/* child process */
+		dup2(pipefds[TXPIPE], STDOUT_FILENO);
+		dup2(pipefds[RXPIPE], STDIN_FILENO);
+		char  **cmd;
+		int n = (int)[args count];
+		int i;
+		if (execvp(cmd[0], cmd) == -1)
+		{
+			exit(-1);
+		}
+		exit(0);
+	}
+	else
+	{
+		*fromChildFd = pipefds[RXPIPE];
+		*toChildFd = pipefds[TXPIPE];
+		*childPid = pid;
+		
+	}
+	return 0;
+}
+
+#endif

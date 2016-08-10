@@ -1,0 +1,29 @@
+#
+# makefile
+#
+
+CC=@CC@
+CFLAGS=@CFLAGS@
+LDFLAGS=@LDFLAGS@
+
+
+all: alsa-stream alsa-switch
+
+alsa-switch:	alsa-switch.o system_util.o
+	${CC} ${LDFLAGS} -o alsa-switch alsa-switch.o system_util.o
+
+alsa-stream:	alsa-stream.o system_util.o alsa_util.o
+	${CC} ${LDFLAGS} -o alsa-stream alsa-stream.o alsa_util.o system_util.o -lasound
+
+install: alsa-stream alsa-switch
+	install -o root -g root -m 755 alsa-stream $(DESTDIR)/usr/local/bin/alsa-stream
+	install -o root -g root -m 755 alsa-switch ${DESTDIR}/usr/local/bin/alsa-switch
+
+clean:
+	rm -f alsa-stream alsa-switch *.o
+
+.SUFFIXES: .o .c
+
+%.o:  %.c
+	${CC} -c ${CFLAGS}  $< -o $@
+
