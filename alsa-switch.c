@@ -1,4 +1,4 @@
-/*
+ /*
  * alsa-switch.c
  *
  * reading from multiple capture device and writing to multiple audio output device 1:1
@@ -66,6 +66,8 @@ typedef struct sound_pipe
 void process_command(sound_pipe *pipes,int pipecount, int index, char in);
 void mute(sound_pipe *pipe);
 void unmute(sound_pipe *pipe);
+void setNonBlocking(int fd);
+
 
 int main(int argc, const char *argv[])
 {
@@ -152,6 +154,8 @@ int main(int argc, const char *argv[])
 #endif
 		printf("opening control channel %s",pipe->control_pipe_name);
         pipe->controlStream = open(pipe->control_pipe_name,O_RDONLY | O_NONBLOCK);
+        setNonBlocking(pipe->controlStream);
+
 		printf(".\n");
 		fflush(stdout);
         if(pipe->controlStream < 0)
@@ -186,19 +190,22 @@ int main(int argc, const char *argv[])
 	{
 		sound_pipe *pipe = &pipes[i];
 		
-		const char *cmd[6];
+		const char * cmd[6];
 		cmd[0] = "/usr/local/bin/alsa-stream";
 		cmd[1] = format_string;
 		cmd[2] = rate_string;
 		cmd[3] = pipe->input_device_name;
 		cmd[4] = pipe->output_device_name;
 		cmd[5] = NULL;
-		err = start_child_process((char *const *)cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
+		err = start_child_process(cmd[0],cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
 		if(err)
 		{
 			fprintf(stderr,"Can not fork subprocesses");
 			return -1;
 		}
+        setNonBlocking(pipe->outStream);
+        setNonBlocking(pipe->inStream);
+
 	}
 	
 	int pollStructCount = 2*pipecount;
@@ -215,10 +222,12 @@ int main(int argc, const char *argv[])
 			sound_pipe *pipe = &pipes[i];
 			fds[i*2+0].fd = pipe->controlStream;
 			fds[i*2+0].events = POLLIN;
+			fds[i*2+0].revents = 0;
 			fds[i*2+1].fd = pipe->inStream;
 			fds[i*2+1].events = POLLIN;
+			fds[i*2+1].revents = 0;
 		}
-		int ret = poll(fds, pollStructCount, 10000); /* timeout of 100ms */
+		int ret = poll(fds, pollStructCount, 1000); /* timeout of 1s */
 		if (ret < 0)
     	{
         	if (errno != EINTR)
@@ -252,26 +261,30 @@ int main(int argc, const char *argv[])
 					{
 						fprintf(stderr,"%d:%s:%c\n",i,pipe->control_pipe_name,in);
 						fflush(stderr);
-                    	//process_command(pipes,pipecount,i, in);
+                    	process_command(pipes,pipecount,i, in);
 					}
                 }
             }
-            if(feedback_events & POLLHUP)
-            {
-                fprintf(stderr,"Subprocess got killed\n");
-				fflush(stdout);
-            }
+            
             if(feedback_events & POLLIN)
             {
                 char buf[256];
                 ssize_t n = read(pipe->inStream,buf,sizeof(buf));
                 while(n>0)
                 {
-                    write(STDOUT_FILENO,buf,n);
+                	fwrite(&buf[0],n,1,stdout);
 					n = read(pipe->inStream,buf,sizeof(buf));
-					fprintf(stdout,"+");
-					fflush(stdout);
+                    if(n>0)
+                    {
+                        fwrite(&buf,n,1,stdout);
+                        fflush(stdout);
+                    }
                 }
+            }
+            if(feedback_events & POLLHUP)
+            {
+                fprintf(stderr,"Subprocess got killed\n");
+				fflush(stdout);
             }
         }
     }
@@ -295,7 +308,42 @@ void process_command(sound_pipe *pipes,int pipecount,int index, char in)
 	
     if((in >='0') && (in <= '9'))
     {
-        pipes[index].currentPriorityLevel = in - '0';
+        int level = pipes[index].currentPriorityLevel;
+
+        switch(in)
+        {
+            case '1':
+                level = 109;
+                break;
+            case '2':
+                level = 108;
+                break;
+            case '3':
+                level = 107;
+                break;
+            case '4':
+                level = 106;
+                break;
+            case '5':
+                level = 105;
+                break;
+            case '6':
+                level = 104;
+                break;
+            case '7':
+                level = 103;
+                break;
+            case '8':
+                level = 102;
+                break;
+            case '9':
+                level = 101;
+                break;
+            case '0':
+                level = 0;
+                break;
+        }
+        pipes[index].currentPriorityLevel = level;
     }
     
     /* find the highest priority in the system */
@@ -325,6 +373,8 @@ void mute(sound_pipe *pipe)
     if(pipe->muted==0)
     {
         write(pipe->outStream,"M",1);
+        fprintf(stdout,"Muting %s->%s\n",pipe->input_device_name,pipe->output_device_name);
+        fflush(stdout);
     }
     pipe->muted=1;
 }
@@ -334,8 +384,16 @@ void unmute(sound_pipe *pipe)
     if(pipe->muted==1)
     {
         write(pipe->outStream,"U",1);
+        fprintf(stdout,"Unmuting %s->%s\n",pipe->input_device_name,pipe->output_device_name);
+        fflush(stdout);
     }
     pipe->muted=0;
 
 }
 
+
+void setNonBlocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags  | O_NONBLOCK);
+}

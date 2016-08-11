@@ -25,12 +25,13 @@
 */
 
 #include "alsa-switch-config.h"
-
-#ifdef HAVE_ALSA_ASOUNDLIB_H
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
+
+#ifdef HAVE_ALSA_ASOUNDLIB_H
+
 #include "alsa_util.h"
 #include "system_util.h"
 
@@ -131,6 +132,17 @@ int main(int argc, const char *argv[])
 	snd_pcm_close(capture_handle);
 	return 0;
 }
-
+#else
+int main(int argc, const char *argv[])
+{
+	fprintf(stdout,"dummy aslsa-stream\n");
+	sleep(3);
+	while(1)
+	{
+		printf("=");
+		fflush(stdout);
+		sleep(3);
+	}
+}
 #endif
 

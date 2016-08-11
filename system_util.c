@@ -27,6 +27,7 @@
 #include "system_util.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define RXPIPE 0
 #define TXPIPE 1
@@ -39,7 +40,13 @@
 ** standard input and output of the child process
 */
 
-int start_child_process(char *const *cmd, int *toChildFd, int *fromChildFd, pid_t *childPid)
+#ifdef DEBUG
+#define DEBUG_PRINT(a)   { printf("DEBUG: %s\n",a); fflush(stdout); }
+#else
+#define DEBUG_PRINT(a) ;
+#endif
+
+int start_child_process(const char *binary,char *const *arguments, int *downStream, int *upStream, pid_t *childPid)
 {
     int pipe_down[2];
     int pipe_up[2];
@@ -52,31 +59,39 @@ int start_child_process(char *const *cmd, int *toChildFd, int *fromChildFd, pid_
     {
         return -1;
     }
+    DEBUG_PRINT("before-fork");
 	pid = fork();
 	if(pid==-1)
 	{
+        DEBUG_PRINT("fork-failed");
 		return -1;
 	}
 	if(pid==0)
 	{
+        DEBUG_PRINT("after-fork-as-child");
 		/* this is the child process */
         /* we map the pipes to its standardin / standardout file descriptors */
-		dup2(pipe_down[RXPIPE], STDIN_FILENO);
+		dup2(pipe_down[RXPIPE], STDIN_FILENO);/* we only read on the downwards stream */
         close(pipe_down[TXPIPE]);
+        DEBUG_PRINT("child: dup2 down");
 
-		dup2(pipe_up[TXPIPE], STDOUT_FILENO);
+		dup2(pipe_up[TXPIPE], STDOUT_FILENO); /* we only write on the upwards stream */
         close(pipe_up[RXPIPE]);
+        DEBUG_PRINT("child: dup2 up");
 
-		if (execvp(cmd[0], cmd) == -1)
+		if (execvp(binary, arguments) == -1)
 		{
+            DEBUG_PRINT("execv: failed");
 			exit(-1);
 		}
+        DEBUG_PRINT("child: execv returned");
 		exit(0);
 	}
 	else
 	{
-		*fromChildFd = pipe_up[RXPIPE];
-		*toChildFd = pipe_down[TXPIPE];
+        DEBUG_PRINT("after-fork-as-parent");
+		*upStream = pipe_up[RXPIPE];
+		*downStream = pipe_down[TXPIPE];
 		*childPid = pid;
 	}
 	return 0;
