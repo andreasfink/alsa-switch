@@ -66,7 +66,6 @@ typedef struct sound_pipe
 void process_command(sound_pipe *pipes,int pipecount, int index, char in);
 void mute(sound_pipe *pipe);
 void unmute(sound_pipe *pipe);
-void setNonBlocking(int fd);
 
 
 int main(int argc, const char *argv[])
@@ -392,8 +391,3 @@ void unmute(sound_pipe *pipe)
 }
 
 
-void setNonBlocking(int fd)
-{
-    int flags = fcntl(fd, F_GETFL, 0);
-    fcntl(fd, F_SETFL, flags  | O_NONBLOCK);
-}

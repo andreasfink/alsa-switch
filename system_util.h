@@ -21,3 +21,5 @@
 #include <stdlib.h>
 
 int start_child_process(const char *binary, char *const *cmd, int *toChildFdr, int *fromChildFd, pid_t *childPid);
+void setNonBlocking(int fd);
+

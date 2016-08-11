@@ -31,10 +31,7 @@
 #include "alsa_util.h"
 #include <string.h>
 
-#define RXPIPE 0
-#define TXPIPE 1
-
- int format_string_to_value(const char *s)
+int format_string_to_value(const char *s)
 {
 	if(s == NULL)
 	{
@@ -290,7 +287,7 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 		return err;
 	}
 
-	err = snd_pcm_hw_params_set_channels(*handle, hw_params, 2);
+	err = snd_pcm_hw_params_set_channels(*handle, hw_params, 1);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot set channel count(%s)\n",
@@ -322,7 +319,7 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	err = snd_pcm_sw_params_set_avail_min(*handle, sw_params, bufsize);
+	err = snd_pcm_sw_params_set_avail_min(*handle, sw_params, 64);
 	if(err < 0) 
 	{
 		fprintf(stderr, "%s (%s): cannot set minimum available count(%s)\n",

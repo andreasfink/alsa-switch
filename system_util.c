@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 #define RXPIPE 0
 #define TXPIPE 1
@@ -95,4 +96,11 @@ int start_child_process(const char *binary,char *const *arguments, int *downStre
 		*childPid = pid;
 	}
 	return 0;
+}
+
+
+void setNonBlocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags  | O_NONBLOCK);
 }
