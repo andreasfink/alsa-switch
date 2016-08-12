@@ -232,21 +232,30 @@ int format_string_to_value(const char *s)
 	return SND_PCM_FORMAT_FLOAT;
 } 
 
-int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned int rate, int format, size_t bufsize)
+int open_sound_device(snd_pcm_t **handle,
+                      const char *name,
+                      int dir,
+                      unsigned int rate,
+                      int format,
+                      size_t bufsize
+                      bool blocking)
 {
 	snd_pcm_hw_params_t *hw_params;
 	snd_pcm_sw_params_t *sw_params;
 	const char *dirname = (dir == SND_PCM_STREAM_PLAYBACK) ? "PLAYBACK" : "CAPTURE";
+    
 	int err;
 
-	err = snd_pcm_open(handle, name, dir, 0);
+    snd_pcm_t *pcm;
+	err = snd_pcm_open(pcm, name, dir, blocking ? 0 : SND_PCM_NONBLOC);
 	if (err < 0) 
 	{
 		fprintf(stderr, "%s (%s): cannot open audio device (%s)\n", 
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	
+    *handle = pcm;
+    
 	err = snd_pcm_hw_params_malloc(&hw_params);
 	if(err < 0) 
 	{
@@ -255,7 +264,7 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 		return err;
 	}
 			 
-	err = snd_pcm_hw_params_any(*handle, hw_params);
+	err = snd_pcm_hw_params_any(pcm, hw_params);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot initialize hardware parameter structure(%s)\n",
@@ -263,7 +272,7 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 		return err;
 	}
 
-	err = snd_pcm_hw_params_set_access(*handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
+	err = snd_pcm_hw_params_set_access(pcm, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot set access type(%s)\n",
@@ -271,15 +280,22 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 		return err;
 	}
 
-	err = snd_pcm_hw_params_set_format(*handle, hw_params, format);
+	err = snd_pcm_hw_params_set_format(pcm, hw_params, format);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot set sample format(%s)\n",
 			name, dirname, snd_strerror(err));
 		return err;
 	}
+    err = snd_pcm_hw_params_set_channels(pcm, hw_params, 1);
+    if(err < 0)
+    {
+        fprintf(stderr, "%s (%s): cannot set channel count(%s)\n",
+                name, dirname, snd_strerror(err));
+        return err;
+    }
 
-	err = snd_pcm_hw_params_set_rate_near(*handle, hw_params, &rate, NULL);
+	err = snd_pcm_hw_params_set_rate_near(pcm, hw_params, &rate, NULL);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot set sample rate(%s)\n",
@@ -287,15 +303,25 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 		return err;
 	}
 
-	err = snd_pcm_hw_params_set_channels(*handle, hw_params, 1);
-	if(err < 0)
-	{
-		fprintf(stderr, "%s (%s): cannot set channel count(%s)\n",
-			name, dirname, snd_strerror(err));
-		return err;
-	}
-
-	err = snd_pcm_hw_params(*handle, hw_params);
+    err = snd_pcm_hw_params_set_period_size(pcm, hw_params, periodsize, 0);
+    if(err < 0)
+    {
+        fprintf(stderr, "%s (%s): cannot set period size(%s)\n",
+                name, dirname, snd_strerror(err));
+        return err;
+    }
+    
+    /*
+    err = snd_pcm_hw_params_set_buffer_size(pcm, hw_param, bufsize);
+    if(err < 0)
+    {
+        fprintf(stderr, "%s (%s): cannot set buffer size(%s)\n",
+                name, dirname, snd_strerror(err));
+        return err;
+    }
+    */
+	
+	err = snd_pcm_hw_params(pcm, hw_params);
 	if(err< 0) 
 	{
 		fprintf(stderr, "%s (%s): cannot set parameters(%s)\n",
@@ -312,28 +338,28 @@ int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned in
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	err = snd_pcm_sw_params_current(*handle, sw_params);
+	err = snd_pcm_sw_params_current(pcm, sw_params);
 	if(err < 0) 
 	{
 		fprintf(stderr, "%s (%s): cannot initialize software parameters structure(%s)\n",
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	err = snd_pcm_sw_params_set_avail_min(*handle, sw_params, 64);
+	err = snd_pcm_sw_params_set_avail_min(pcm, sw_params, 64);
 	if(err < 0) 
 	{
 		fprintf(stderr, "%s (%s): cannot set minimum available count(%s)\n",
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	err = snd_pcm_sw_params_set_start_threshold(*handle, sw_params, 0U);
+	err = snd_pcm_sw_params_set_start_threshold(pcm, sw_params, 0U);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot set start mode(%s)\n",
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	err = snd_pcm_sw_params(*handle, sw_params);
+	err = snd_pcm_sw_params(pcm, sw_params);
 	if(err < 0)
 	{
 		fprintf(stderr, "%s (%s): cannot set software parameters(%s)\n",

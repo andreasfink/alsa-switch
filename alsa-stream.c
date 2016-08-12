@@ -47,14 +47,16 @@ int main(int argc, const char *argv[])
 	unsigned int format	= DEFAULT_FORMAT;
 	snd_pcm_t *playback_handle = NULL;
 	snd_pcm_t *capture_handle = NULL;
-	int buf[BUFSIZE*2];
+	char *buf;
 	
 	int buf_write_pos = 0;
 	int buf_read_pos = 0;
 	int buf_available = BUFSIZE;
 	int buf_in_use = 0;
-	int buf_size = BUFSIZE;
-	
+	int buf_size = BUFSIZE; /* this is in number of samples */
+    int channels = 1; /* we are only working in mono channels */
+    int sample_size;
+    
 	if(argc < 5)
 	{
 		fprintf(stderr,"\nUsage:\t%s audio-format sample-rate input-device output-device\n",argv[0]);
@@ -68,24 +70,20 @@ int main(int argc, const char *argv[])
 	format_string = argv[1];
 	format = format_string_to_value(format_string);
 	
-	err = open_sound_device(&capture_handle, input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,1024);
+	err = open_sound_device(&capture_handle, input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,1024,0);
 	if(err < 0)
 	{
 		return err;
 	}
-	err = open_sound_device(&playback_handle, output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,1024);
+	err = open_sound_device(&playback_handle, output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,1024,0);
 	if(err < 0)
 	{
 		return err;
 	}
-	err = snd_pcm_prepare(playback_handle);
-	if(err < 0)
-	{
-		fprintf(stderr, "cannot prepare audio interface for use(%s)\n",
-			 snd_strerror(err));
-		return err;
-	}
-	
+    
+    sample_size = snd_pcm_format_size(format, bufsize) * channels;
+    buf = calloc(1, sample_size);
+
 	err = snd_pcm_start(capture_handle);
 	if(err < 0)
 	{
@@ -93,8 +91,14 @@ int main(int argc, const char *argv[])
 			 snd_strerror(err));
 		return err;
 	}
-
-	memset(buf, 0, sizeof(buf));
+    err = snd_pcm_prepare(playback_handle);
+    if(err < 0)
+    {
+        fprintf(stderr, "cannot prepare audio interface for use(%s)\n",
+                snd_strerror(err));
+        return err;
+    }
+    
 	setNonBlocking(STDIN_FILENO);
 
 	snd_pcm_sframes_t in_avail;
