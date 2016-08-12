@@ -237,8 +237,8 @@ int open_sound_device(snd_pcm_t **handle,
                       int dir,
                       unsigned int rate,
                       int format,
-                      size_t bufsize
-                      bool blocking)
+                      size_t bufsize,
+                      int blocking)
 {
 	snd_pcm_hw_params_t *hw_params;
 	snd_pcm_sw_params_t *sw_params;
@@ -247,7 +247,7 @@ int open_sound_device(snd_pcm_t **handle,
 	int err;
 
     snd_pcm_t *pcm;
-	err = snd_pcm_open(pcm, name, dir, blocking ? 0 : SND_PCM_NONBLOC);
+	err = snd_pcm_open(&pcm, name, dir, blocking ? 0 : SND_PCM_NONBLOCK);
 	if (err < 0) 
 	{
 		fprintf(stderr, "%s (%s): cannot open audio device (%s)\n", 
@@ -302,7 +302,7 @@ int open_sound_device(snd_pcm_t **handle,
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-
+	/*
     err = snd_pcm_hw_params_set_period_size(pcm, hw_params, periodsize, 0);
     if(err < 0)
     {
@@ -311,7 +311,6 @@ int open_sound_device(snd_pcm_t **handle,
         return err;
     }
     
-    /*
     err = snd_pcm_hw_params_set_buffer_size(pcm, hw_param, bufsize);
     if(err < 0)
     {

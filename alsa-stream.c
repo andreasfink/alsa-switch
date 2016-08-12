@@ -81,7 +81,7 @@ int main(int argc, const char *argv[])
 		return err;
 	}
     
-    sample_size = snd_pcm_format_size(format, bufsize) * channels;
+    sample_size = snd_pcm_format_size(format, buf_size) * channels;
     buf = calloc(1, sample_size);
 
 	err = snd_pcm_start(capture_handle);
