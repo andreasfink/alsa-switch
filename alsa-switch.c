@@ -42,19 +42,11 @@
 #include "alsa_util.h"
 #endif
 
-
 typedef struct sound_pipe
 {
 	const char *input_device_name;
 	const char *output_device_name;
 	const char *control_pipe_name;
-#ifdef	HAVE_ALSA_ASOUNDLIB_H
-	snd_pcm_t *input_handle;
-	snd_pcm_t *output_handle;
-   	unsigned char *buf;
-    ssize_t  bufsize;
-
-#endif
 	int controlStream;
 	int inStream;
 	int outStream;
@@ -67,13 +59,10 @@ void process_command(sound_pipe *pipes,int pipecount, int index, char in);
 void mute(sound_pipe *pipe);
 void unmute(sound_pipe *pipe);
 
-
 int main(int argc, const char *argv[])
 {
 	int err;
 	int i;
-	unsigned int rate = 48000;
-	int format = SND_PCM_FORMAT_S16_LE;
 
 	if(argc < 4)
 	{
@@ -97,62 +86,15 @@ int main(int argc, const char *argv[])
 	sound_pipe *pipes = calloc(sizeof(sound_pipe),pipecount);	
 	for(i=0;i<pipecount;i++)
 	{
-		sound_pipe *pipe = &pipes[i];
-		
-		pipe->input_device_name = argv[1+(i*3)+0];
-		pipe->output_device_name = argv[1+(i*3)+1];
-		pipe->control_pipe_name = argv[1+(i*3)+2];
+		sound_pipe *pipe			= &pipes[i];
+		pipe->input_device_name		= argv[1+(i*3)+0];
+		pipe->output_device_name	= argv[1+(i*3)+1];
+		pipe->control_pipe_name		= argv[1+(i*3)+2];
 
-#ifdef	HAVE_ALSA_ASOUNDLIB_H
-
-#define BUFSIZE (1024 * 4)
-
-        pipe->bufsize   = BUFSIZE*2;
-        pipe->buf       = malloc(BUFSIZE * 2);
-        memset(pipe->buf, 0, BUFSIZE * 2);
-
-        err = open_sound_device(&pipe->input_handle, pipe->input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,NULL,NULL,0);
-		if(err < 0)
-		{
-			return err;
-		}
-		err = open_sound_device(&pipe->output_handle, pipe->output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,NULL,NULL,0);
-		if(err < 0)
-		{
-			return err;
-        }
-        err = snd_pcm_prepare(pipe->output_handle);
-		if(err < 0)
-		{
-			fprintf(stderr, "cannot prepare audio interface '%s' for use(%s)\n",
-			 pipe->input_device_name,snd_strerror(err));
-			return err;
-		}
-/*	
-		err = snd_pcm_link(pipe->input_handle,pipe->output_handle);
-		if(err < 0)
-		{
-			fprintf(stderr, "cannot link '%s' to '%s': %s\n",
-			 pipe->input_device_name,
-			 pipe->output_device_name,
-			 snd_strerror(err));
-			return err;
-		}
-*/
-		err = snd_pcm_start(pipe->input_handle);
-		if(err < 0)
-		{
-			fprintf(stderr, "cannot prepare audio interface '%s' for use(%s)\n",
-			 pipe->input_device_name,snd_strerror(err));
-			return err;
-		}
-#endif
 		printf("opening control channel %s",pipe->control_pipe_name);
         pipe->controlStream = open(pipe->control_pipe_name,O_RDONLY | O_NONBLOCK);
         setNonBlocking(pipe->controlStream);
 
-		printf(".\n");
-		fflush(stdout);
         if(pipe->controlStream < 0)
         {
             /* lets try to create it */
@@ -171,15 +113,6 @@ int main(int argc, const char *argv[])
             }
         }
 	}
-#ifdef	HAVE_ALSA_ASOUNDLIB_H
-	/* we close the sound drivers so the child process can take over */
-	for(i=0;i<pipecount;i++)
-	{
-		sound_pipe *pipe = &pipes[i];
-		snd_pcm_close(pipe->output_handle);
-		snd_pcm_close(pipe->input_handle);
-	}
-#endif
 
 	for(i=0;i<pipecount;i++)
 	{
@@ -207,8 +140,7 @@ int main(int argc, const char *argv[])
     int doQuit=0;
 	while(doQuit==0)
 	{
-		fprintf(stderr,".");
-		fflush(stderr);
+		usleep(100000);
 		memset(fds,0x00,pSize);
 		for(i=0;i<pipecount;i++)
 		{
@@ -258,7 +190,6 @@ int main(int argc, const char *argv[])
 					}
                 }
             }
-            
             if(feedback_events & POLLIN)
             {
                 char buf[256];

@@ -124,8 +124,6 @@ dnl Checks for libraries.
 AC_CHECK_LIB(m, log)
 AC_CHECK_LIB(socket, accept)
 
-AC_CHECK_LIB(asound,snd_pcm_hw_params_set_format,[LIBS="$LIBS -lasound"])
-
 dnl Checks for header files.
 
 AC_HEADER_STDC
@@ -133,7 +131,6 @@ AC_HEADER_STDC
 dnl check for headers
 AC_CONFIG_SECTION([Configuring HEADERS])
 
-AC_CHECK_HEADERS(alsa/asoundlib.h)
 AC_CHECK_HEADERS(sys/socket.h)
 AC_CHECK_HEADERS(sys/sockio.h)
 

@@ -43,11 +43,12 @@ int main(int argc, const char *argv[])
 	snd_pcm_t *capture_handle = NULL;
 	int buf_byte_size = 0;
 	char *buf = NULL;
-	unsigned int rate = 48000;
+	unsigned int rate = 8000;
 	int format = SND_PCM_FORMAT_S16_LE;
 	snd_pcm_uframes_t buf_sample_size 			= 8192; /* this is in number of samples we want to store in our buffer */
-	snd_pcm_uframes_t buf_sample_size_capture = buf_sample_size;
-	snd_pcm_uframes_t buf_sample_size_playback = buf_sample_size;
+	snd_pcm_uframes_t buf_sample_size_capture	= buf_sample_size;
+	snd_pcm_uframes_t buf_sample_size_playback	= buf_sample_size;
+	unsigned int buf_sample_time_capture = 200;// miliseconds
 	int channels 								= 1; /* we are only working in mono channels */
 
 	if(argc < 3)
@@ -63,8 +64,8 @@ int main(int argc, const char *argv[])
 								 rate,
 								 format,
 								 &buf_sample_size_capture,
-								 NULL,
-								 1);
+								 &buf_sample_time_capture,
+								 0);
 	if(err < 0)
 	{
 		return err;
@@ -74,9 +75,9 @@ int main(int argc, const char *argv[])
 								SND_PCM_STREAM_PLAYBACK,
 								rate,
 								format,
-								&buf_sample_size_playback,
-								NULL,
-								1);
+								NULL,//&buf_sample_size_playback,
+								NULL,//&buf_sample_time_playback,
+								0);
 	if(err < 0)
 	{
 		return err;
@@ -92,9 +93,9 @@ int main(int argc, const char *argv[])
 	}
 	
 	printf("Samples in capture buffer: %d\n",(int)buf_sample_size_capture);
-	printf("Samples in playback buffer: %d\n",(int)buf_sample_size_playback);
+	printf("capture sample time: %ums\n",buf_sample_time_capture);
 	printf("Samples in buffer: %d\n",(int)buf_sample_size);
-	
+
     buf_byte_size = snd_pcm_format_size(format, buf_sample_size) * channels;
     buf = calloc(1, buf_byte_size);
 
@@ -119,7 +120,7 @@ int main(int argc, const char *argv[])
 	snd_pcm_sframes_t out_avail;
 
 	int mute = 0;
-	if(1)
+	if(0)
 	{
 		int wait_timeout_ms = 100;
 		err = snd_pcm_wait(capture_handle, wait_timeout_ms);
@@ -159,7 +160,7 @@ int main(int argc, const char *argv[])
 			if(mute==1)
 			{
 				/* muting means we output zeros */
-				memset(&buf,0x00,buf_byte_size);
+				memset(buf,0x00,buf_byte_size);
 			}
 			snd_pcm_writei(playback_handle, buf, in_avail);
 		}

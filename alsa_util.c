@@ -303,15 +303,7 @@ int open_sound_device(snd_pcm_t **handle,
 			name, dirname, snd_strerror(err));
 		return err;
 	}
-	/*
-    err = snd_pcm_hw_params_set_period_size(pcm, hw_params, periodsize, 0);
-    if(err < 0)
-    {
-        fprintf(stderr, "%s (%s): cannot set period size(%s)\n",
-                name, dirname, snd_strerror(err));
-        return err;
-    }
-    */
+
     if(buffer_size_ptr!=NULL)
     {
 		err = snd_pcm_hw_params_set_buffer_size_near(pcm, hw_params, buffer_size_ptr);
@@ -337,6 +329,7 @@ int open_sound_device(snd_pcm_t **handle,
 		fprintf(stderr, "%s (%s): buffer time set to %d\n",
 					name, dirname, (int)*buffer_time_ptr);
     }
+
 	err = snd_pcm_hw_params(pcm, hw_params);
 	if(err< 0) 
 	{
