@@ -237,7 +237,8 @@ int open_sound_device(snd_pcm_t **handle,
                       int dir,
                       unsigned int rate,
                       int format,
-                      size_t bufsize,
+                      snd_pcm_uframes_t  *buffer_size_ptr,
+                      unsigned int *buffer_time_ptr,
                       int blocking)
 {
 	snd_pcm_hw_params_t *hw_params;
@@ -310,16 +311,32 @@ int open_sound_device(snd_pcm_t **handle,
                 name, dirname, snd_strerror(err));
         return err;
     }
-    
-    err = snd_pcm_hw_params_set_buffer_size(pcm, hw_param, bufsize);
-    if(err < 0)
-    {
-        fprintf(stderr, "%s (%s): cannot set buffer size(%s)\n",
-                name, dirname, snd_strerror(err));
-        return err;
-    }
     */
-	
+    if(buffer_size_ptr!=NULL)
+    {
+		err = snd_pcm_hw_params_set_buffer_size_near(pcm, hw_params, buffer_size_ptr);
+		if(err < 0)
+		{
+			fprintf(stderr, "%s (%s): cannot set buffer size to %d (%s)\n",
+					name, dirname, (int)*buffer_size_ptr,snd_strerror(err));
+			return err;
+		}
+		fprintf(stderr, "%s (%s): buffer size set to %d\n",
+					name, dirname, (int)*buffer_size_ptr);
+    }
+    
+    if(buffer_time_ptr != NULL)
+	{
+		err = snd_pcm_hw_params_set_buffer_time_near(pcm, hw_params, buffer_time_ptr,NULL);
+		if(err < 0)
+		{
+			fprintf(stderr, "%s (%s): cannot set buffer size to %d (%s)\n",
+					name, dirname, (int)*buffer_time_ptr,snd_strerror(err));
+			return err;
+		}
+		fprintf(stderr, "%s (%s): buffer time set to %d\n",
+					name, dirname, (int)*buffer_time_ptr);
+    }
 	err = snd_pcm_hw_params(pcm, hw_params);
 	if(err< 0) 
 	{

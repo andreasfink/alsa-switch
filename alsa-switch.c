@@ -72,21 +72,17 @@ int main(int argc, const char *argv[])
 {
 	int err;
 	int i;
-	if(argc < 6)
+	unsigned int rate = 48000;
+	int format = SND_PCM_FORMAT_S16_LE;
+
+	if(argc < 4)
 	{
-		fprintf(stderr,"Usage:\n\t%s audio-format sample-rate input-device1 output-device1 control-pipe1 input-device2 output-device2 control-pipe2 ...\n",argv[0]);
+		fprintf(stderr,"Usage:\n\t%s input-device1 output-device1 control-pipe1 input-device2 output-device2 control-pipe2 ...\n",argv[0]);
 		return -1;
 	}
 
-	const char *format_string = argv[1];
-	const char *rate_string = argv[2];
-#ifdef	HAVE_ALSA_ASOUNDLIB_H
-    int rate = atoi(rate_string);
-	int format = format_string_to_value(format_string);
-#endif
-
-	int pipecount = (argc - 3)/3;
-	if(((argc -3) % 3) != 0)
+	int pipecount = (argc - 1)/3;
+	if(((argc -1) % 3) != 0)
 	{
 		fprintf(stderr,"Usage:\n\t%s input-device1 output-device1 control-pipe1 input-device2 output-device2 control-pipe2 ...\n",argv[0]);
 		return -1;
@@ -103,9 +99,9 @@ int main(int argc, const char *argv[])
 	{
 		sound_pipe *pipe = &pipes[i];
 		
-		pipe->input_device_name = argv[3+(i*3)+0];
-		pipe->output_device_name = argv[3+(i*3)+1];
-		pipe->control_pipe_name = argv[3+(i*3)+2];
+		pipe->input_device_name = argv[1+(i*3)+0];
+		pipe->output_device_name = argv[1+(i*3)+1];
+		pipe->control_pipe_name = argv[1+(i*3)+2];
 
 #ifdef	HAVE_ALSA_ASOUNDLIB_H
 
@@ -115,12 +111,12 @@ int main(int argc, const char *argv[])
         pipe->buf       = malloc(BUFSIZE * 2);
         memset(pipe->buf, 0, BUFSIZE * 2);
 
-        err = open_sound_device(&pipe->input_handle, pipe->input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,BUFSIZE);
+        err = open_sound_device(&pipe->input_handle, pipe->input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,NULL,NULL,0);
 		if(err < 0)
 		{
 			return err;
 		}
-		err = open_sound_device(&pipe->output_handle, pipe->output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,BUFSIZE);
+		err = open_sound_device(&pipe->output_handle, pipe->output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,NULL,NULL,0);
 		if(err < 0)
 		{
 			return err;
@@ -191,12 +187,10 @@ int main(int argc, const char *argv[])
 		
 		const char * cmd[6];
 		cmd[0] = "/usr/local/bin/alsa-stream";
-		cmd[1] = format_string;
-		cmd[2] = rate_string;
-		cmd[3] = pipe->input_device_name;
-		cmd[4] = pipe->output_device_name;
-		cmd[5] = NULL;
-		err = start_child_process(cmd[0],cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
+		cmd[1] = pipe->input_device_name;
+		cmd[2] = pipe->output_device_name;
+		cmd[3] = NULL;
+		err = start_child_process(cmd[0],(char *const *)cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
 		if(err)
 		{
 			fprintf(stderr,"Can not fork subprocesses");

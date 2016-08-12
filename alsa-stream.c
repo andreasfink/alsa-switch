@@ -36,61 +36,68 @@
 #include "system_util.h"
 
 
-#define	DEFAULT_FORMAT	SND_PCM_FORMAT_S16_LE
-#define	DEFAULT_RATE	48000
-#define	BUFSIZE (DEFAULT_RATE * 8)
-
 int main(int argc, const char *argv[])
 {
 	int err;
-	unsigned int rate 	= DEFAULT_RATE;
-	unsigned int format	= DEFAULT_FORMAT;
 	snd_pcm_t *playback_handle = NULL;
 	snd_pcm_t *capture_handle = NULL;
-	char *buf;
-	
-	int buf_write_pos = 0;
-	int buf_read_pos = 0;
-	int buf_available = BUFSIZE;
-	int buf_in_use = 0;
-	int buf_size = BUFSIZE; /* this is in number of samples */
-    int channels = 1; /* we are only working in mono channels */
-    int sample_size;
-    
-	if(argc < 5)
+	int buf_byte_size = 0;
+	char *buf = NULL;
+	unsigned int rate = 48000;
+	int format = SND_PCM_FORMAT_S16_LE;
+	snd_pcm_uframes_t buf_sample_size 			= 8192; /* this is in number of samples we want to store in our buffer */
+	snd_pcm_uframes_t buf_sample_size_capture = buf_sample_size;
+	snd_pcm_uframes_t buf_sample_size_playback = buf_sample_size;
+	int channels 								= 1; /* we are only working in mono channels */
+
+	if(argc < 3)
 	{
-		fprintf(stderr,"\nUsage:\t%s audio-format sample-rate input-device output-device\n",argv[0]);
+		fprintf(stderr,"\nUsage:\t%s input-device output-device\n",argv[0]);
 		return -1;
 	}
+	const char *input_device_name  = argv[1];
+	const char *output_device_name = argv[2];
+	err = open_sound_device(&capture_handle,
+								 input_device_name,
+								 SND_PCM_STREAM_CAPTURE,
+								 rate,
+								 format,
+								 &buf_sample_size_capture,
+								 NULL,
+								 1);
+	if(err < 0)
+	{
+		return err;
+	}
+	err = open_sound_device(&playback_handle, 
+								output_device_name,
+								SND_PCM_STREAM_PLAYBACK,
+								rate,
+								format,
+								&buf_sample_size_playback,
+								NULL,
+								1);
+	if(err < 0)
+	{
+		return err;
+	}
 
-	const char *input_device_name  = argv[3];
-	const char *output_device_name = argv[4];
-	const char *format_string = NULL;
-	rate = atoi(argv[2]);
-	format_string = argv[1];
-	format = format_string_to_value(format_string);
+	if(buf_sample_size_playback > buf_sample_size_capture)
+	{
+		buf_sample_size = buf_sample_size_capture;
+	}
+	else
+	{
+		buf_sample_size = buf_sample_size_playback;
+	}
 	
-	err = open_sound_device(&capture_handle, input_device_name, SND_PCM_STREAM_CAPTURE,rate,format,1024,0);
-	if(err < 0)
-	{
-		return err;
-	}
-	err = open_sound_device(&playback_handle, output_device_name, SND_PCM_STREAM_PLAYBACK,rate,format,1024,0);
-	if(err < 0)
-	{
-		return err;
-	}
-    
-    sample_size = snd_pcm_format_size(format, buf_size) * channels;
-    buf = calloc(1, sample_size);
+	printf("Samples in capture buffer: %d\n",(int)buf_sample_size_capture);
+	printf("Samples in playback buffer: %d\n",(int)buf_sample_size_playback);
+	printf("Samples in buffer: %d\n",(int)buf_sample_size);
+	
+    buf_byte_size = snd_pcm_format_size(format, buf_sample_size) * channels;
+    buf = calloc(1, buf_byte_size);
 
-	err = snd_pcm_start(capture_handle);
-	if(err < 0)
-	{
-		fprintf(stderr, "cannot prepare audio interface for use(%s)\n",
-			 snd_strerror(err));
-		return err;
-	}
     err = snd_pcm_prepare(playback_handle);
     if(err < 0)
     {
@@ -99,106 +106,85 @@ int main(int argc, const char *argv[])
         return err;
     }
     
+	err = snd_pcm_start(capture_handle);
+	if(err < 0)
+	{
+		fprintf(stderr, "cannot prepare audio interface for use(%s)\n",
+			 snd_strerror(err));
+		return err;
+	}
 	setNonBlocking(STDIN_FILENO);
 
 	snd_pcm_sframes_t in_avail;
 	snd_pcm_sframes_t out_avail;
 
-
-	int wait_read = 0;
-	int work_done = 1;
+	int mute = 0;
+	if(1)
+	{
+		int wait_timeout_ms = 100;
+		err = snd_pcm_wait(capture_handle, wait_timeout_ms);
+		if(err == -EPIPE)
+		{
+			/* xrun */
+		}
+		else if(err == -ESTRPIPE)
+		{
+		}
+		else if(err < 0)
+		{
+			fprintf(stderr, "poll failed(%s) errno %d\n", strerror(errno),errno);
+			return -1;
+		}
+	}
 	while (1)
 	{
-		if(!work_done)
-		{
-			/* if we had nothing to be done for one cycle, it might be whise to sleep a bit to not bring the system into a busyloop */
-			/* but we should not sleep longer than 32 frames at 48kHz so we wont over or underrun the buffer */
-			/* 32 frames at 48khz is 0.000667 seconds */
-			usleep(666);
-		}
 	
-		work_done = 0;
-		if(wait_read)
-		{
-			err = snd_pcm_wait(playback_handle, 1000000);
-			if(err < 0)
-			{
-				if(errno != EAGAIN)
-				{
-					fprintf(stderr, "poll failed(%s) errno %d\n", strerror(errno),errno);
-					break;
-				}
-			}
-			else
-			{
-				wait_read = 0;
-				work_done++; /* we did read something */
-			}
-		}
 
-		int cmd = getc(stdin);
-		if(cmd != EOF)
-		{
-			printf("got command '%c'\n",cmd);
-			fflush(stdout);
-			work_done++;
-		}
-
+		/* lets read samples up to the buffer size */
 		in_avail = snd_pcm_avail_update(capture_handle);
 		if (in_avail > 0)
 		{
-			int remaining_until_end = buf_size - buf_read_pos;
-			
-			if (in_avail > remaining_until_end)
+			if(in_avail > buf_sample_size)
 			{
-				in_avail = remaining_until_end;
-			}
-			if(in_avail > buf_available)
-			{
-				in_avail = buf_available;
-			}
-			snd_pcm_readi(capture_handle, &buf[buf_read_pos], in_avail);
-			buf_read_pos += in_avail;
-			buf_available -= in_avail;
-			buf_read_pos = buf_read_pos % buf_size;
-			buf_in_use += in_avail;
-#ifdef DEBUG_BUFFER
-			fprintf(stdout,"in  0x%08x  pos 0x%08x, avail 0x%08x\n",(unsigned int)in_avail,(unsigned int)buf_read_pos,(unsigned int)buf_available);
-#endif
-			work_done++;
-		}
-
-		out_avail = snd_pcm_avail_update(playback_handle);
-		if (out_avail > 0)
-		{
-			if(out_avail > buf_in_use)
-			{
-				out_avail =buf_in_use;
+				in_avail = buf_sample_size;
 			}	
-			if (out_avail > buf_size)
+			snd_pcm_readi(capture_handle, buf, in_avail);
+			out_avail = snd_pcm_avail_update(playback_handle);
+			while (out_avail < in_avail)
 			{
-				out_avail = buf_size;
+				usleep(100);
+				out_avail = snd_pcm_avail_update(playback_handle);
 			}
-			int remaining_until_end = buf_size - buf_write_pos;
-			if(out_avail > remaining_until_end)
+
+			if(mute==1)
 			{
-				out_avail = remaining_until_end;
+				/* muting means we output zeros */
+				memset(&buf,0x00,buf_byte_size);
 			}
-			if(out_avail==0)
+			snd_pcm_writei(playback_handle, buf, in_avail);
+		}
+		else
+		{
+			usleep(100);
+		}
+		
+		int cmd = getc(stdin);
+		if(cmd != EOF)
+		{
+			switch(cmd)
 			{
-				wait_read = 1;
-				continue;
+				case 'm':
+				case 'M':
+					mute=1;
+					printf("<muted>\n");
+					break;
+				case 'u':
+				case 'U':
+					mute=0;
+					printf("<umuted>\n");
+					break;
 			}
-			snd_pcm_writei(playback_handle, &buf[buf_write_pos], out_avail);
-			buf_write_pos += out_avail;
-			buf_available += out_avail;
-			buf_write_pos %= buf_size;
-			buf_in_use -= out_avail;
-			work_done = 1;
-#ifdef DEBUG_BUFFER
-			fprintf(stdout,"out 0x%08x, pos 0x%08x avail 0x%08x\n",(unsigned int)out_avail,(unsigned int)buf_write_pos,(unsigned int)buf_available);
-#endif		
-			work_done++;
+			fflush(stdout);	
 		}
 	}
 	snd_pcm_close(playback_handle);

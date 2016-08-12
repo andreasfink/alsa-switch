@@ -22,5 +22,13 @@
 #include <alsa/asoundlib.h>
  
 int format_string_to_value(const char *s);
-int open_sound_device(snd_pcm_t **handle, const char *name, int dir, unsigned int rate, int format, size_t bufsize, int blocking);
+int open_sound_device(snd_pcm_t **handle,
+                      const char *name,
+                      int dir,
+                      unsigned int rate,
+                      int format,
+                      snd_pcm_uframes_t  *buffer_size_ptr,
+                      unsigned int *buffer_time_ptr,
+                      int blocking);
+
 #endif
