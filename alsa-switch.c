@@ -35,6 +35,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "alsa-switch-config.h"
 #include "system_util.h"
@@ -52,12 +53,15 @@ typedef struct sound_pipe
 	int outStream;
     int currentPriorityLevel;
     int muted;
+    int active;
 	pid_t pid;
 } sound_pipe;
 
 void process_command(sound_pipe *pipes,int pipecount, int index, char in);
 void mute(sound_pipe *pipe);
 void unmute(sound_pipe *pipe);
+void start_pipe(sound_pipe *pipe);
+void stop_pipe(sound_pipe *pipe);
 
 int main(int argc, const char *argv[])
 {
@@ -117,21 +121,7 @@ int main(int argc, const char *argv[])
 	for(i=0;i<pipecount;i++)
 	{
 		sound_pipe *pipe = &pipes[i];
-		
-		const char * cmd[6];
-		cmd[0] = "/usr/local/bin/alsa-stream";
-		cmd[1] = pipe->input_device_name;
-		cmd[2] = pipe->output_device_name;
-		cmd[3] = NULL;
-		err = start_child_process(cmd[0],(char *const *)cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
-		if(err)
-		{
-			fprintf(stderr,"Can not fork subprocesses");
-			return -1;
-		}
-        setNonBlocking(pipe->outStream);
-        setNonBlocking(pipe->inStream);
-
+        start_pipe(pipe);
 	}
 	
 	int pollStructCount = 2*pipecount;
@@ -299,6 +289,7 @@ void mute(sound_pipe *pipe)
         write(pipe->outStream,"M",1);
         fprintf(stdout,"Muting %s->%s\n",pipe->input_device_name,pipe->output_device_name);
         fflush(stdout);
+        stop_pipe(pipe);
     }
     pipe->muted=1;
 }
@@ -310,9 +301,35 @@ void unmute(sound_pipe *pipe)
         write(pipe->outStream,"U",1);
         fprintf(stdout,"Unmuting %s->%s\n",pipe->input_device_name,pipe->output_device_name);
         fflush(stdout);
+        start_pipe(pipe);
+        if(pipe->active)
+        {
+            pipe->muted=0;
+        }
     }
-    pipe->muted=0;
-
 }
 
+void start_pipe(sound_pipe *pipe)
+{
+    int err;
+    const char * cmd[6];
+    cmd[0] = "/usr/local/bin/alsa-stream";
+    cmd[1] = pipe->input_device_name;
+    cmd[2] = pipe->output_device_name;
+    cmd[3] = NULL;
+    err = start_child_process(cmd[0],(char *const *)cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
+    if(err)
+    {
+        fprintf(stderr,"Can not fork subprocesses");
+        return;
+    }
+    setNonBlocking(pipe->outStream);
+    setNonBlocking(pipe->inStream);
+    pipe->active=1;
+}
 
+void stop_pipe(sound_pipe *pipe)
+{
+    kill(pipe->pid,SIGKILL);
+    pipe->active=0;
+}
