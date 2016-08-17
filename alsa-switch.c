@@ -94,7 +94,7 @@ int main(int argc, const char *argv[])
 		pipe->input_device_name		= argv[1+(i*3)+0];
 		pipe->output_device_name	= argv[1+(i*3)+1];
 		pipe->control_pipe_name		= argv[1+(i*3)+2];
-
+		pipe->muted				    = 1;
 		printf("opening control channel %s",pipe->control_pipe_name);
         pipe->controlStream = open(pipe->control_pipe_name,O_RDONLY | O_NONBLOCK);
         setNonBlocking(pipe->controlStream);
@@ -254,7 +254,7 @@ void process_command(sound_pipe *pipes,int pipecount,int index, char in)
                 level = 101;
                 break;
             case '0':
-                level = 0;
+                level = 999;
                 break;
         }
         pipes[index].currentPriorityLevel = level;
@@ -263,14 +263,14 @@ void process_command(sound_pipe *pipes,int pipecount,int index, char in)
     /* find the highest priority in the system */
     for(i=0;i<pipecount;i++)
     {
-        if(pipes[i].currentPriorityLevel  > max_priority)
+        if(pipes[i].currentPriorityLevel  > max_priority) 
         {
             max_priority = pipes[i].currentPriorityLevel;
         }
     }
     for(i=0;i<pipecount;i++)
     {
-        if(pipes[i].currentPriorityLevel < max_priority)
+        if((pipes[i].currentPriorityLevel < max_priority) || (pipes[i].currentPriorityLevel == 999))
         {
             mute(&pipes[i]);
         }
@@ -286,7 +286,7 @@ void mute(sound_pipe *pipe)
 {
     if(pipe->muted==0)
     {
-        write(pipe->outStream,"M",1);
+        //write(pipe->outStream,"M",1);
         fprintf(stdout,"Muting %s->%s\n",pipe->input_device_name,pipe->output_device_name);
         fflush(stdout);
         stop_pipe(pipe);
