@@ -312,11 +312,17 @@ void unmute(sound_pipe *pipe)
 void start_pipe(sound_pipe *pipe)
 {
     int err;
-    const char * cmd[6];
-    cmd[0] = "/usr/local/bin/alsa-stream";
-    cmd[1] = pipe->input_device_name;
-    cmd[2] = pipe->output_device_name;
-    cmd[3] = NULL;
+    const char * cmd[10];
+    cmd[0] = "/usr/bin/alsaloop";
+    cmd[1] = "-C";
+	cmd[2] = pipe->input_device_name;
+	cmd[3] = "-P";
+    cmd[4] = pipe->output_device_name;
+	cmd[5] = "--tlatency=20000";
+	cmd[6] = "--resample";
+	cmd[7] = "--rate=48000";
+	cmd[8] = "--format=S16_LE";
+    cmd[9] = NULL;
     err = start_child_process(cmd[0],(char *const *)cmd,&pipe->outStream,&pipe->inStream,&pipe->pid);
     if(err)
     {
