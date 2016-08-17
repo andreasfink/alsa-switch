@@ -12,8 +12,7 @@ all: alsa-switch
 alsa-switch:	alsa-switch.o system_util.o
 	${CC} ${LDFLAGS} -o alsa-switch alsa-switch.o system_util.o ${LIBS}
 
-install: alsa-stream alsa-switch
-	install -o root -g bin -m 755 alsa-stream.sh $(DESTDIR)/usr/local/bin/alsa-stream
+install: alsa-switch
 	install -o root -g bin -m 755 alsa-switch ${DESTDIR}/usr/local/bin/alsa-switch
 
 clean:
