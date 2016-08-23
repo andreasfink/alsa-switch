@@ -6,6 +6,10 @@ CC=@CC@
 CFLAGS=@CFLAGS@  -g -O0
 LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+sbindir=@sbindir@
 
 all: alsa-switch
 
@@ -13,7 +17,8 @@ alsa-switch:	alsa-switch.o system_util.o
 	${CC} ${LDFLAGS} -o alsa-switch alsa-switch.o system_util.o ${LIBS}
 
 install: alsa-switch
-	install -o root -g bin -m 755 alsa-switch ${DESTDIR}/usr/local/bin/alsa-switch
+	mkdir -p ${DESTDIR}${bindir}
+	install -o root -g bin -m 755 alsa-switch ${DESTDIR}${bindir}/alsa-switch
 
 clean:
 	rm -f alsa-stream *.o
