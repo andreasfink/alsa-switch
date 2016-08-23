@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <time.h>
 
 #include "alsa-switch-config.h"
 #include "system_util.h"
@@ -128,9 +129,13 @@ int main(int argc, const char *argv[])
 	size_t pSize = pollStructCount *sizeof(struct pollfd);
 	struct pollfd *fds = malloc(pSize);
     int doQuit=0;
+	struct timespec sleeptime;
+	sleeptime.tv_sec = 0;
+	sleeptime.tv_nsec = 100000000;
+
 	while(doQuit==0)
 	{
-		usleep(100000);
+		nanosleep(&sleeptime,NULL);
 		memset(fds,0x00,pSize);
 		for(i=0;i<pipecount;i++)
 		{
